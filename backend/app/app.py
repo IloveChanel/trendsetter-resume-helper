@@ -23,7 +23,8 @@ def root():
 @app.post("/api/parse-resume")
 async def parse_resume(file: UploadFile = File(...)):
     content = await file.read()
-    if file.filename.lower().endswith('.pdf'):
+    filename = file.filename or ""
+    if filename.lower().endswith('.pdf'):
         with pdfplumber.open(io.BytesIO(content)) as pdf:
             text = '\n'.join(page.extract_text() or "" for page in pdf.pages)
     else:  # DOCX

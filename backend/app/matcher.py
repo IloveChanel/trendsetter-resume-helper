@@ -1,6 +1,6 @@
 
 import re
-from typing import List, Dict
+from typing import Dict
 
 def match_resume_jd(resume_text: str, jd_text: str) -> Dict:
     """Demo matcher - replace with real AI later"""
