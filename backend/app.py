@@ -9,6 +9,7 @@ from sqlalchemy.orm import Session
 import pdfplumber
 from docx import Document
 import io
+import os
 from typing import Optional, List
 from datetime import datetime
 from contextlib import asynccontextmanager
@@ -30,10 +31,25 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(title="Trendsetter AI Resume Helper", version="1.0.0", lifespan=lifespan)
 
-# CORS middleware - restrict for production
+# CORS middleware - support both local and production URLs
+allowed_origins = [
+    "http://localhost:3000",
+    "http://localhost:8000",
+]
+
+# Add production origins from environment variable
+frontend_url = os.getenv("FRONTEND_URL")
+if frontend_url:
+    allowed_origins.append(frontend_url)
+    # Also add without trailing slash if it has one
+    if frontend_url.endswith("/"):
+        allowed_origins.append(frontend_url.rstrip("/"))
+    else:
+        allowed_origins.append(frontend_url + "/")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:8000"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type", "Accept"],

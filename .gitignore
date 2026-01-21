@@ -47,3 +47,10 @@ dist/
 .scripts/duplicate_report.json
 tmp/
 temp/
+
+# Docker volumes (keep Docker config files)
+docker-volumes/
+
+# Logs
+*.log
+logs/

@@ -20,7 +20,9 @@ Beat ATS bots and rank your resume at the top!
 - Node.js 18+
 - npm or yarn
 
-### Backend Setup
+### Local Development
+
+#### Backend Setup
 
 ```bash
 cd backend
@@ -32,19 +34,46 @@ The backend API will be available at `http://localhost:8000`
 
 API Documentation: `http://localhost:8000/docs`
 
-### Frontend Setup
+#### Frontend Setup
 
 ```bash
 cd frontend
+cp .env.example .env.local
 npm install
 npm run dev
 ```
 
 The frontend will be available at `http://localhost:3000`
 
-### Access the Application
+#### Access the Application
 
 Open your browser and navigate to: **http://localhost:3000**
+
+### Quick Deploy with Docker
+
+```bash
+# One-command deployment
+./deploy.sh
+
+# Or manually with docker-compose
+docker-compose up -d
+```
+
+Access at: **http://localhost:3000**
+
+## Deployment
+
+For production deployment options, see **[DEPLOYMENT.md](DEPLOYMENT.md)** for detailed guides on:
+
+- 🚀 **Quick Deploy**: Vercel (Frontend) + Render (Backend) - Free tier available
+- 🐳 **Docker Deployment**: Complete containerized setup
+- ☁️ **Cloud Platforms**: AWS, DigitalOcean, Railway, Fly.io
+- 🖥️ **VPS Deployment**: Ubuntu server with Nginx and PM2
+
+**Recommended for Production:**
+- Frontend: Vercel (Free tier or $20/mo Pro)
+- Backend: Render ($7/mo) or Railway ($5/mo)
+- Total cost: $0-30/month depending on tier
 
 ## Project Structure
 
