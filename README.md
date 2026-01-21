@@ -53,23 +53,14 @@ trendsetter-resume-helper/
 
 4. **Install dependencies:**
    ```bash
-   pip install fastapi uvicorn pdfplumber python-docx weasyprint jinja2
-   ```
-   
-   Or create a `requirements.txt` with:
-   ```
-   fastapi
-   uvicorn
-   pdfplumber
-   python-docx
-   weasyprint
-   jinja2
-   ```
-   
-   And install with:
-   ```bash
    pip install -r requirements.txt
    ```
+   
+   The requirements.txt includes:
+   - fastapi
+   - uvicorn[standard]
+   - pdfplumber
+   - python-docx
 
 5. **Run the application:**
    ```bash
@@ -136,8 +127,9 @@ Compare a resume against a job description to get a match score.
 ```json
 {
   "score": 75,
-  "matching_keywords": ["python", "fastapi", "api"],
-  "missing_keywords": ["kubernetes", "docker"]
+  "found_keywords": ["Python", "FastAPI", "API"],
+  "missing_keywords": ["Kubernetes", "Docker"],
+  "suggestions": ["Add experience with Kubernetes", "Add experience with Docker"]
 }
 ```
 
