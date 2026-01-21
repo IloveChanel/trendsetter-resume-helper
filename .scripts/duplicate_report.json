@@ -1,0 +1,28 @@
+{
+  "content_duplicates": {
+    "0530175f7046db85619d01fc19e7903fb40500cb620ee2ff051b0b859e7ce421": [
+      "C:\\Users\\selli\\OneDrive\\Desktop\\trendsetter-ai-resume-helper\\package.json",
+      "C:\\Users\\selli\\OneDrive\\Desktop\\trendsetter-ai-resume-helper\\frontend\\package.json"
+    ]
+  },
+  "basename_collisions": {
+    "app.py": [
+      "C:\\Users\\selli\\OneDrive\\Desktop\\trendsetter-ai-resume-helper\\app.py",
+      "C:\\Users\\selli\\OneDrive\\Desktop\\trendsetter-ai-resume-helper\\trendsetter-ai-resume-helper\\backend\\app\\app.py"
+    ],
+    "matcher.py": [
+      "C:\\Users\\selli\\OneDrive\\Desktop\\trendsetter-ai-resume-helper\\matcher.py",
+      "C:\\Users\\selli\\OneDrive\\Desktop\\trendsetter-ai-resume-helper\\trendsetter-ai-resume-helper\\backend\\app\\matcher.py"
+    ],
+    "package-lock.json": [
+      "C:\\Users\\selli\\OneDrive\\Desktop\\trendsetter-ai-resume-helper\\package-lock.json",
+      "C:\\Users\\selli\\OneDrive\\Desktop\\trendsetter-ai-resume-helper\\frontend\\package-lock.json",
+      "C:\\Users\\selli\\OneDrive\\Desktop\\trendsetter-ai-resume-helper\\trendsetter-ai-resume-helper\\frontend\\package-lock.json"
+    ],
+    "package.json": [
+      "C:\\Users\\selli\\OneDrive\\Desktop\\trendsetter-ai-resume-helper\\package.json",
+      "C:\\Users\\selli\\OneDrive\\Desktop\\trendsetter-ai-resume-helper\\frontend\\package.json",
+      "C:\\Users\\selli\\OneDrive\\Desktop\\trendsetter-ai-resume-helper\\trendsetter-ai-resume-helper\\frontend\\package.json"
+    ]
+  }
+}
