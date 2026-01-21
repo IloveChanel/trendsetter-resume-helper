@@ -5,6 +5,8 @@ import ResumeUpload from '@/components/ResumeUpload';
 import JobInput from '@/components/JobInput';
 import Results from '@/components/Results';
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 export default function Home() {
   const [resumeText, setResumeText] = useState('');
   const [jobDescription, setJobDescription] = useState('');
@@ -27,7 +29,7 @@ export default function Home() {
         formData.append('job_title', jobTitle);
       }
 
-      const response = await fetch('http://localhost:8000/api/match-job', {
+      const response = await fetch(`${API_URL}/api/match-job`, {
         method: 'POST',
         body: formData,
       });

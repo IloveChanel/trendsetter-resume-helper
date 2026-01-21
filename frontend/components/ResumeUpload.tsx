@@ -7,6 +7,8 @@ interface ResumeUploadProps {
   onUpload: (text: string) => void;
 }
 
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+
 export default function ResumeUpload({ onUpload }: ResumeUploadProps) {
   const [filename, setFilename] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -22,7 +24,7 @@ export default function ResumeUpload({ onUpload }: ResumeUploadProps) {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch('http://localhost:8000/api/upload-resume', {
+      const response = await fetch(`${API_URL}/api/upload-resume`, {
         method: 'POST',
         body: formData,
       });

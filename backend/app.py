@@ -11,6 +11,7 @@ from docx import Document
 import io
 from typing import Optional, List
 from datetime import datetime
+from contextlib import asynccontextmanager
 
 # Import our modules
 from matcher import match_resume_jd
@@ -20,21 +21,23 @@ from grammar_checker import GrammarChecker
 from optimizer import ResumeOptimizer
 from database import init_db, get_db, Job, Resume, Keyword, AnalysisHistory
 
-app = FastAPI(title="Trendsetter AI Resume Helper", version="1.0.0")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Initialize database
+    init_db()
+    yield
+    # Shutdown: cleanup if needed
 
-# CORS middleware
+app = FastAPI(title="Trendsetter AI Resume Helper", version="1.0.0", lifespan=lifespan)
+
+# CORS middleware - restrict for production
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:3000", "http://localhost:8000"],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "Accept"],
 )
-
-# Initialize database on startup
-@app.on_event("startup")
-async def startup_event():
-    init_db()
 
 # Initialize checkers
 ats_checker = ATSChecker()
