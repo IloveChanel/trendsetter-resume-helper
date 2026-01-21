@@ -3,20 +3,47 @@ venv/
 .env
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
 
 # Node
 node_modules/
 frontend/node_modules/
 **/node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
 
 # Next.js
 .next/
 build/
+out/
+dist/
 
 # VS Code
 .vscode/
 
+# IDE
+.idea/
+*.swp
+*.swo
+
 # Others
 .DS_Store
 .env.local
-node_modules
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Scripts and temporary files
+.scripts/duplicate_report.json
+tmp/
+temp/
