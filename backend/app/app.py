@@ -3,10 +3,7 @@ from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 import pdfplumber
 from docx import Document
-import json
 from matcher import match_resume_jd
-import weasyprint
-from jinja2 import Template
 import io
 
 app = FastAPI(title="Trendsetter AI Resume Helper")
@@ -26,11 +23,11 @@ def root():
 @app.post("/api/parse-resume")
 async def parse_resume(file: UploadFile = File(...)):
     content = await file.read()
-    if file.filename.lower().endswith('.pdf'):
+    filename = file.filename or ""
+    if filename.lower().endswith('.pdf'):
         with pdfplumber.open(io.BytesIO(content)) as pdf:
             text = '\n'.join(page.extract_text() or "" for page in pdf.pages)
     else:  # DOCX
-        from docx import Document
         doc = Document(io.BytesIO(content))
         text = '\n'.join(para.text for para in doc.paragraphs)
     
