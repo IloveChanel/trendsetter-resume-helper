@@ -54,3 +54,8 @@ docker-volumes/
 # Logs
 *.log
 logs/
+node_modules
+
+# Generated reports
+.scripts/duplicate_report.json
+*.json.report
