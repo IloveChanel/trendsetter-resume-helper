@@ -26,10 +26,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://localhost:3001", 
-        "http://localhost:8000",
-        "https://trendsetter-resume-helper-git-main-michelle-vances-projects.vercel.app",
-        "https://trendsetter-resume-helper-bpi6pfrtv-michelle-vances-projects.vercel.app",
-        "https://trendsetter-resume-helper-mbaqjoq94-michelle-vances-projects.vercel.app",
+        "https://*.vercel.app",  # ✅ Allows all Vercel deployments
         "https://trendsetter-resume-helper.onrender.com"
     ],
     allow_credentials=True,
