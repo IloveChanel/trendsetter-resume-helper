@@ -1,5 +1,4 @@
 
-
 {
   "name": "frontend",
   "version": "0.1.0",
@@ -9,7 +8,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "vercel-install": "npm install --include=dev"
   },
   "dependencies": {
     "next": "^16.1.4",
