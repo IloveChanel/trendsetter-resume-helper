@@ -1,15 +1,20 @@
 
+<!DOCTYPE html>
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trendsetter AI | Resume Studio</title>
     
-    <!-- Add this CSP meta tag -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://trendsetter-resume-helper.vercel.app;">
-    
-    <script src="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.1/dist/tailwind.min.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'unsafe-inline' 'unsafe-eval' data: blob:; script-src-elem * 'unsafe-inline' 'unsafe-eval' data: blob:; style-src * 'unsafe-inline'; connect-src * data: blob:; img-src * data: blob:; font-src * data:;">
+<!-- Replace lines 9-10 with these enhanced script tags: -->
+
+    <script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/persist@3.x.x/dist/cdn.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+   
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
+    
     <style>
         body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #050505; color: white; }
         .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); }
@@ -18,202 +23,355 @@
     </style>
 </head>
 <body x-data="resumeStudio()">
+<!-- Replace the entire left section (lines 28-52) with this: -->
 
-    <div class="relative min-h-screen flex flex-col">
-        <div class="fixed top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_50%,rgba(17,24,39,1)_0%,rgba(5,5,5,1)_100%)] -z-10"></div>
-        <div class="fixed top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full"></div>
+<!-- Add this complete right section after your left section closing tag: -->
 
-        <header class="px-8 py-6 flex justify-between items-center border-b border-white/5">
-            <div class="text-xl font-bold tracking-tighter uppercase">Trendsetter<span class="text-blue-500">AI</span></div>
-            <button @click="reset()" class="text-xs text-gray-500 hover:text-white uppercase tracking-widest transition-colors">New Project</button>
-        </header>
+<div class="relative min-h-screen flex flex-col">
+    <div class="fixed top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_50%,rgba(17,24,39,1)_0%,rgba(5,5,5,1)_100%)] -z-10"></div>
+    <div class="fixed top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full"></div>
 
-        <main class="flex-1 grid lg:grid-cols-2 gap-0">
+    <header class="px-8 py-6 flex justify-between items-center border-b border-white/5">
+        <div class="text-xl font-bold tracking-tighter uppercase">Trendsetter<span class="text-blue-500">AI</span></div>
+        <button @click="reset()" class="text-xs text-gray-500 hover:text-white uppercase tracking-widest transition-colors">New Project</button>
+    </header>
+
+    <main class="flex-1 grid lg:grid-cols-2 gap-0">
+        
+        <!-- Your existing left section stays here -->
+        <section class="p-6 lg:p-12 border-r border-white/5 flex flex-col space-y-6 overflow-y-auto">
+            <!-- ... existing left section content ... -->
+        </section>
+
+        <!-- New Enhanced Right Section -->
+        <section class="p-6 lg:p-12 bg-black/20 space-y-8 overflow-y-auto">
             
-            <section class="p-6 lg:p-12 border-r border-white/5 flex flex-col space-y-6">
-                <div class="flex justify-between items-end">
-                    <h2 class="text-sm font-bold text-blue-400 uppercase tracking-[0.2em]">Optimized Result</h2>
-                    <span class="text-[10px] text-gray-500 uppercase" x-text="lastSaved"></span>
+            <div class="space-y-4">
+                <h2 class="text-sm font-bold text-gray-500 uppercase tracking-[0.2em]">1. Upload Resume</h2>
+                <div class="glass p-6 rounded-2xl border-dashed border-white/10 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500/50 transition-all">
+                    <input type="file" @change="handleFileUpload" class="hidden" id="fileInput" name="resume-file" accept=".txt,.pdf,.doc,.docx">
+                    <label for="fileInput" class="text-center cursor-pointer w-full">
+                        <span class="text-2xl mb-2 block">📄</span>
+                        <span class="text-xs text-gray-400" x-text="fileName || 'Click to upload PDF, DOC, or TXT'"></span>
+                        <div x-show="fileName" class="mt-2 text-[10px] text-blue-400" x-cloak>
+                            ✅ <span x-text="fileName"></span> uploaded
+                        </div>
+                    </label>
                 </div>
-                
-                <div class="flex-1 glass p-8 rounded-[32px] shadow-2xl relative group min-h-[450px]">
+            </div>
+
+            <div class="space-y-4">
+                <h2 class="text-sm font-bold text-gray-500 uppercase tracking-[0.2em]">OR Paste Text</h2>
+                <div class="relative">
                     <textarea 
-                        x-model="generatedResume" 
-                        class="w-full h-full bg-transparent text-gray-300 leading-relaxed resize-none text-sm lg:text-base"
-                        placeholder="Your AI-optimized resume will appear here for final edits..."></textarea>
+                        x-model="originalResumeText" 
+                        id="originalResumeText" 
+                        name="original-resume-text" 
+                        placeholder="Paste current resume content here..." 
+                        class="w-full h-32 bg-white/5 border border-white/10 p-4 rounded-xl text-sm resize-none focus:border-blue-500/50 transition-all"></textarea>
+                    <div x-show="originalResumeText.length > 50" class="absolute bottom-2 right-2 text-[10px] text-blue-400" x-cloak>
+                        <span x-text="Math.round(originalResumeText.length / 5.5)"></span> words
+                    </div>
                 </div>
+            </div>
 
-                <div class="grid grid-cols-3 gap-3">
-                    <button @click="download('pdf')" class="py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-bold uppercase transition-all">PDF</button>
-                    <button @click="download('doc')" class="py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-bold uppercase transition-all">Doc</button>
-                    <button @click="download('office')" class="py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-bold uppercase transition-all">Office</button>
+            <div class="space-y-4">
+                <h2 class="text-sm font-bold text-gray-500 uppercase tracking-[0.2em]">2. Target Job Title</h2>
+                <input 
+                    x-model="jobTitle" 
+                    id="jobTitle" 
+                    name="job-title" 
+                    type="text" 
+                    placeholder="e.g. Senior Frontend Engineer" 
+                    class="w-full bg-white/5 border border-white/10 p-4 rounded-xl text-sm focus:border-blue-500/50 transition-all">
+            </div>
+            
+            <div class="space-y-4">
+                <h2 class="text-sm font-bold text-gray-500 uppercase tracking-[0.2em]">3. Job Description</h2>
+                <div class="relative">
+                    <textarea 
+                        x-model="jobDesc" 
+                        id="jobDesc" 
+                        name="job-description" 
+                        placeholder="Paste the job requirements here..." 
+                        class="w-full h-40 bg-white/5 border border-white/10 p-4 rounded-xl text-sm resize-none focus:border-blue-500/50 transition-all"></textarea>
+                    
+                    <!-- Real-time Job Description Analysis -->
+                    <div x-show="jobDesc.length > 50" class="mt-3 glass p-3 rounded-lg" x-cloak>
+                        <div class="text-[11px] text-blue-400 font-bold uppercase mb-2">🔍 Job Analysis Preview</div>
+                        <div class="grid grid-cols-2 gap-3 text-xs">
+                            <div>
+                                <span class="text-gray-500">Keywords Detected:</span>
+                                <span class="text-blue-400 font-bold" x-text="extractKeywords(jobDesc).length"></span>
+                            </div>
+                            <div>
+                                <span class="text-gray-500">Word Count:</span>
+                                <span class="text-green-400 font-bold" x-text="Math.round(jobDesc.length / 5.5)"></span>
+                            </div>
+                        </div>
+                        <div class="mt-2 text-[10px] text-gray-400">
+                            Top Keywords: <span class="text-blue-300" x-text="extractKeywords(jobDesc).slice(0, 4).join(', ')"></span>
+                        </div>
+                    </div>
                 </div>
-                <button @click="alert('Resume Saved!')" class="w-full py-4 bg-blue-600 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-blue-500 shadow-lg shadow-blue-500/20 transition-all">
-                    Save Changes
-                </button>
-            </section>
+            </div>
 
-            <section class="p-6 lg:p-12 bg-black/20 space-y-8 overflow-y-auto">
+            <!-- Analysis Button with Smart States -->
+            <button 
+                @click="runAnalysis()" 
+                :disabled="loading || !jobDesc.trim()"
+                class="w-full py-5 rounded-2xl font-black text-lg uppercase tracking-tighter transition-all"
+                :class="!jobDesc.trim() ? 'bg-gray-600 text-gray-400 cursor-not-allowed' : 
+                        loading ? 'bg-yellow-600 text-yellow-100' : 
+                        'bg-white text-black hover:bg-blue-600 hover:text-white'">
                 
-           
+                <span x-show="!jobDesc.trim()" x-cloak>📝 Add Job Description First</span>
+                <span x-show="jobDesc.trim() && !loading" x-cloak>🤖 Analyze & Optimize</span>
+                <span x-show="loading" class="animate-pulse" x-cloak>
+                    <span class="inline-block animate-spin">⚡</span> AI Processing...
+                </span>
+            </button>
 
-                <div class="space-y-4">
-                    <h2 class="text-sm font-bold text-gray-500 uppercase tracking-[0.2em]">1. Upload Resume</h2>
-                    <div class="glass p-6 rounded-2xl border-dashed border-white/10 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500/50 transition-all">
-                        <input type="file" @change="handleFileUpload" class="hidden" id="fileInput" name="resume-file">
-                        <label for="fileInput" class="text-center cursor-pointer">
-                            <span class="text-2xl mb-2 block">📄</span>
-                            <span class="text-xs text-gray-400" x-text="fileName || 'Click to upload or drag & drop'"></span>
-                        </label>
+            <!-- Progress Indicator -->
+            <div x-show="loading" class="glass p-4 rounded-2xl" x-cloak>
+                <div class="flex items-center space-x-3">
+                    <div class="animate-spin h-5 w-5 border-2 border-blue-500 border-t-transparent rounded-full"></div>
+                    <div class="text-sm text-blue-400">
+                        <div class="font-bold">Analyzing your resume...</div>
+                        <div class="text-xs text-gray-500 mt-1">This may take 30 seconds if our AI is waking up</div>
                     </div>
                 </div>
+            </div>
 
-                <div class="space-y-4">
-                    <h2 class="text-sm font-bold text-gray-500 uppercase tracking-[0.2em]">OR Paste Text</h2>
-                    <textarea x-model="originalResumeText" id="resumeText" name="resume-text" placeholder="Paste current resume content here..." class="w-full h-32 bg-white/5 border border-white/10 p-4 rounded-xl text-sm resize-none focus:border-blue-500/50 transition-all"></textarea>
-                </div>
-
-                <div class="space-y-4">
-                    <h2 class="text-sm font-bold text-gray-500 uppercase tracking-[0.2em]">2. Target Job Title</h2>
-                    <input x-model="jobTitle" id="jobTitle" name="job-title" type="text" placeholder="e.g. Senior Project Manager" class="w-full bg-white/5 border border-white/10 p-4 rounded-xl text-sm focus:border-blue-500/50 transition-all">
-                </div>
-                
-                <div class="space-y-4">
-                    <h2 class="text-sm font-bold text-gray-500 uppercase tracking-[0.2em]">3. Job Description</h2>
-                    <textarea x-model="jobDesc" id="jobDescription" name="job-description" placeholder="Paste the job requirements here..." class="w-full h-40 bg-white/5 border border-white/10 p-4 rounded-xl text-sm resize-none focus:border-blue-500/50 transition-all"></textarea>
-                </div>
-
-                <button 
-                    @click="runAnalysis()" 
-                    :disabled="loading"
-                    class="w-full py-5 bg-white text-black rounded-2xl font-black text-lg uppercase tracking-tighter hover:bg-blue-600 hover:text-white transition-all disabled:opacity-50">
-                    <span x-show="!loading">Analyze & Re-Write</span>
-                    <span x-show="loading" class="animate-pulse" x-cloak>AI is Calibrating...</span>
-                </button>
-
-                <div x-show="analyzed" x-transition x-cloak class="space-y-4 pt-8 border-t border-white/5">
-                    <h2 class="text-sm font-bold text-blue-500 uppercase tracking-[0.2em]">ATS Insights</h2>
-                    <div class="grid grid-cols-2 gap-4">
-                        <div class="glass p-4 rounded-xl text-center">
-                            <div class="text-2xl font-bold" x-text="results.score + '%'"></div>
-                            <div class="text-[10px] text-gray-500 uppercase">Match Score</div>
-                        </div>
-                        <div class="glass p-4 rounded-xl text-center">
-                            <div class="text-2xl font-bold text-green-500" x-text="results.keywordsFound"></div>
-                            <div class="text-[10px] text-gray-500 uppercase">Keywords Hit</div>
-                        </div>
+            <!-- Quick Tips Section -->
+            <div class="glass p-6 rounded-2xl space-y-3">
+                <h3 class="text-sm font-bold text-purple-400 uppercase tracking-widest">💡 Pro Tips</h3>
+                <div class="space-y-2 text-xs text-gray-300">
+                    <div class="flex items-start space-x-2">
+                        <span class="text-green-400 mt-0.5">•</span>
+                        <span>Include quantifiable achievements (percentages, dollar amounts)</span>
                     </div>
-                    <div class="glass p-6 rounded-2xl space-y-3">
-                        <h3 class="text-xs font-bold text-gray-400 uppercase">Missing Keywords:</h3>
-                        <div class="flex flex-wrap gap-2">
-                            <template x-for="kw in results.missingKeywords" :key="kw">
-                                <span class="text-[10px] bg-red-500/10 text-red-400 px-2 py-1 rounded-md border border-red-500/20" x-text="kw"></span>
-                            </template>
-                        </div>
+                    <div class="flex items-start space-x-2">
+                        <span class="text-blue-400 mt-0.5">•</span>
+                        <span>Use exact keywords from the job description</span>
+                    </div>
+                    <div class="flex items-start space-x-2">
+                        <span class="text-purple-400 mt-0.5">•</span>
+                        <span>Start bullet points with strong action verbs</span>
+                    </div>
+                    <div class="flex items-start space-x-2">
+                        <span class="text-yellow-400 mt-0.5">•</span>
+                        <span>Keep resume to 1-2 pages (800-2000 characters)</span>
                     </div>
                 </div>
-            </section>
-        </main>
-    </div>
+            </div>
+        </section>
+    </main>
+</div>
+
 
 <script>
-    function resumeStudio() {
-        return {
-            jobTitle: '',
-            jobDesc: '',
-            originalResumeText: '',
-            generatedResume: '',
-            fileName: '',
-            loading: false,
-            analyzed: false,
-            lastSaved: '',
-            results: { score: 0, keywordsFound: 0, missingKeywords: [] },
+function resumeStudio() {
+    return {
+        // --- Core Data ---
+        jobTitle: '',
+        jobDesc: '',
+        originalResumeText: '',
+        generatedResume: '',
+        fileName: '',
+        loading: false,
+        lastSaved: '',
 
-            async runAnalysis() {
-                if (!this.originalResumeText || !this.jobDesc) {
-                    alert('Please provide your resume and the job description.');
-                    return;
-                }
+        // --- Analysis & Audit Properties ---
+        atsScore: 0,
+        matchedKeywords: [],
+        missingKeywords: [],
+        grammarStatus: 'Clean',
+        impactVerbsCount: 0,
+        metricsCount: 0,
+        botWarnings: [],
+        overallGrade: 'F',
 
-                this.loading = true;
-                
-                try {
-                    // LIVE BACKEND URL
-                    const API_URL = 'https://trendsetter-resume-helper.vercel.app';
-                    
-                    const formData = new FormData();
-                    formData.append('resume_text', this.originalResumeText);
-                    formData.append('job_description', this.jobDesc);
-                    if (this.jobTitle) formData.append('job_title', this.jobTitle);
+        // --- Core Analysis Logic ---
+        async runAnalysis() {
+            const resume = (this.originalResumeText || '').trim();
+            const jobDescription = (this.jobDesc || '').trim();
+            const jobTitle = (this.jobTitle || '').trim();
 
-                    const response = await fetch(`${API_URL}/api/match-job`, {
-                        method: 'POST',
-                        body: formData,
-                    });
-
-                    if (!response.ok) throw new Error('Analysis failed');
-
-                    const data = await response.json();
-                    
-                    this.results = {
-                        score: data.score || 0,
-                        keywordsFound: data.feedback?.length || 0,
-                        missingKeywords: data.suggestions || []
-                    };
-                    
-                    this.generatedResume = this.generateOptimizedResume(data);
-                    this.analyzed = true;
-                    this.lastSaved = 'Synced: ' + new Date().toLocaleTimeString();
-                    
-                } catch (error) {
-                    console.error('Error:', error);
-                    alert('Could not connect to AI Engine. Check if the backend is awake.');
-                } finally {
-                    this.loading = false;
-                }
-            },
-
-            generateOptimizedResume(data) {
-                let text = `--- ${this.jobTitle.toUpperCase() || 'OPTIMIZED'} RESUME ---\n\n`;
-                text += `${this.originalResumeText}\n\n`;
-                text += `--- AI STRATEGIC ENHANCEMENTS ---\n`;
-                if (data.suggestions?.length) {
-                    data.suggestions.forEach(s => text += `• ${s}\n`);
-                }
-                return text;
-            },
-
-            async handleFileUpload(e) {
-                const file = e.target.files[0];
-                if (!file) return;
-                this.fileName = file.name;
-
-                if (file.type.includes('text') || file.name.endsWith('.txt')) {
-                    this.originalResumeText = await file.text();
-                    alert('File Loaded!');
-                } else {
-                    alert('For now, please upload .txt files or copy-paste text directly.');
-                }
-            },
-
-            download(type) {
-                if (!this.generatedResume) return alert('Analyze first!');
-                
-                const blob = new Blob([this.generatedResume], { type: 'text/plain' });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                const name = this.jobTitle ? this.jobTitle.replace(/\s+/g, '-') : 'resume';
-                a.download = `Trendsetter-${name}.txt`;
-                a.click();
-                URL.revokeObjectURL(url);
-            },
-
-            reset() {
-                if(confirm("Clear current project?")) location.reload();
+            if (!jobDescription) {
+                alert('🚨 Please provide a job description for ATS analysis!');
+                return;
             }
+
+            this.loading = true;
+            
+            try {
+                // SMART API URL DETECTION - Works locally AND on Production
+                const getApiUrl = () => {
+                    const hostname = window.location.hostname;
+                    // Local development detection
+                    if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname.startsWith('192.168.')) {
+                        return 'http://localhost:8000';
+                    }
+                    // Fallback to your Render production URL
+                    return 'https://trendsetter-resume-helper.onrender.com';
+                };
+
+                const API_URL = getApiUrl();
+                console.log(`🔗 Connecting to API: ${API_URL}`);
+
+                const formData = new FormData();
+                formData.append('resume_text', resume || 'Generate new from template');
+                formData.append('job_description', jobDescription);
+                if (jobTitle) formData.append('job_title', jobTitle);
+
+                const response = await fetch(`${API_URL}/api/match-job`, {
+                    method: 'POST',
+                    body: formData,
+                    signal: AbortSignal.timeout(30000) 
+                });
+
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+                const data = await response.json();
+
+                // --- ENHANCED DEFENSIVE DATA HANDLING ---
+                const keywordData = data?.keyword_analysis || { matched_keywords: [], missing_keywords: [], score: 0 };
+                const botData = data?.bot_safety || { critical_warnings: [], safety_score: 0 };
+                const metricsData = data?.metrics || { verb_strength: 0, metric_count: 0 };
+                
+                // Sanitizing strings and arrays to prevent .toLowerCase() crashes
+                const safeMatched = (keywordData.matched_keywords || [])
+                    .filter(kw => kw && typeof kw === 'string')
+                    .map(kw => kw.toLowerCase());
+                
+                const safeMissing = (keywordData.missing_keywords || [])
+                    .filter(kw => kw && typeof kw === 'string')
+                    .map(kw => kw.toLowerCase());
+                
+                const safeWarnings = (botData.critical_warnings || [])
+                    .filter(warning => warning && typeof warning === 'string');
+
+                // Map results to Alpine.js state
+                this.generatedResume = data?.optimized_resume || data?.enhanced_text || this.originalResumeText || '';
+                this.atsScore = data?.ats_score || 0;
+                this.overallGrade = data?.overall_grade || "F";
+                this.matchedKeywords = safeMatched;
+                this.missingKeywords = safeMissing;
+                this.botWarnings = safeWarnings;
+                
+                // Logic for UI indicators
+                this.grammarStatus = (safeWarnings.length === 0) ? 'Perfect' : 'Review';
+                this.impactVerbsCount = metricsData?.verb_strength || this.countActionVerbs(this.generatedResume);
+                this.metricsCount = metricsData?.metric_count || this.countMetrics(this.generatedResume);
+
+                this.lastSaved = 'Analyzed: ' + new Date().toLocaleTimeString();
+                
+            } catch (error) {
+                console.error("Analysis Failed:", error);
+                this.atsScore = 0;
+                this.overallGrade = "F";
+                this.missingKeywords = ["Analysis failed"];
+                this.botWarnings = [`Error: ${error.message}`];
+                alert(`Analysis Error: ${error.message}`);
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        // --- Audit Helper Methods ---
+        countActionVerbs(text) {
+            if (!text) return 0;
+            const actionVerbs = ['achieved', 'managed', 'developed', 'created', 'implemented', 'optimized', 'spearheaded', 'architected', 'designed', 'built', 'launched', 'delivered', 'improved', 'increased', 'decreased', 'streamlined', 'automated'];
+            const words = text.toLowerCase().split(/\W+/);
+            return actionVerbs.filter(verb => words.includes(verb)).length;
+        },
+
+        countMetrics(text) {
+            if (!text) return 0;
+            const metricPattern = /(\d+%|\$[\d,]+|\d+[\d,]*)/g;
+            const matches = text.match(metricPattern);
+            return matches ? matches.length : 0;
+        },
+
+        // --- Keyword Management ---
+        addKeywordToResume(keyword) {
+            if (!this.generatedResume.toLowerCase().includes(keyword.toLowerCase())) {
+                if (this.generatedResume.match(/SKILLS|COMPETENCIES/i)) {
+                    this.generatedResume = this.generatedResume.replace(
+                        /(SKILLS|COMPETENCIES)([^\n]*\n)/i, 
+                        `$1$2• ${keyword.charAt(0).toUpperCase() + keyword.slice(1)}\n`
+                    );
+                } else {
+                    this.generatedResume += `\n\nKEY SKILLS\n• ${keyword.charAt(0).toUpperCase() + keyword.slice(1)}`;
+                }
+                
+                this.missingKeywords = this.missingKeywords.filter(k => k !== keyword);
+                this.matchedKeywords.push(keyword);
+                this.recalculateATS();
+                alert(`✅ Added "${keyword}" to your resume!`);
+            }
+        },
+
+        recalculateATS() {
+            if (this.jobDesc) {
+                // Simplified local recalculation
+                const jobKws = this.extractKeywords(this.jobDesc);
+                const resumeText = this.generatedResume.toLowerCase();
+                const matches = jobKws.filter(kw => resumeText.includes(kw));
+                this.atsScore = Math.min(95, Math.round((matches.length / jobKws.length) * 100) + 10);
+                this.impactVerbsCount = this.countActionVerbs(this.generatedResume);
+                this.metricsCount = this.countMetrics(this.generatedResume);
+            }
+        },
+
+        // --- File & Storage Methods ---
+        async handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            this.fileName = file.name;
+            if (file.type.includes('text') || file.name.endsWith('.txt')) {
+                this.originalResumeText = await file.text();
+            } else {
+                alert('Current version supports .txt files. PDF upload is being enabled in the backend!');
+            }
+        },
+
+        saveToLocalStorage() {
+            const projectData = {
+                originalResume: this.originalResumeText,
+                generatedResume: this.generatedResume,
+                jobTitle: this.jobTitle,
+                jobDesc: this.jobDesc,
+                atsScore: this.atsScore,
+                timestamp: new Date().toISOString()
+            };
+            localStorage.setItem('trendsetter-resume-project', JSON.stringify(projectData));
+            this.lastSaved = 'Saved: ' + new Date().toLocaleTimeString();
+            alert('💾 Project saved locally!');
+        },
+
+        download() {
+            if (!this.generatedResume) return alert('Generate resume first!');
+            const blob = new Blob([this.generatedResume], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `trendsetter-optimized-${Date.now()}.txt`;
+            a.click();
+            URL.revokeObjectURL(url);
+        },
+
+        reset() {
+            if(confirm("Clear current project?")) location.reload();
+        },
+
+        extractKeywords(text) {
+            if (!text) return [];
+            const stopWords = ['the', 'and', 'for', 'with', 'that', 'from'];
+            return [...new Set(text.toLowerCase().replace(/[^\w\s]/g, ' ').split(/\s+/))]
+                   .filter(word => word.length > 3 && !stopWords.includes(word)).slice(0, 15);
         }
     }
+}
 </script>
-</body>
-</html>
