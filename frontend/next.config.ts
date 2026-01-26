@@ -1,11 +1,23 @@
 
-import type { NextConfig } from 'next';
+import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // 1. Ignore TS errors to ensure the build finishes even with minor type mismatches
   typescript: { 
     ignoreBuildErrors: true 
   },
 
+  // 2. Routing logic to serve your masterpiece index.html
+  async rewrites() {
+    return [
+      {
+        source: '/',
+        destination: '/index.html',
+      },
+    ];
+  },
+
+  // 3. Security Headers - Crucial for CDN and API communication
   async headers() {
     return [
       {
@@ -13,17 +25,19 @@ const nextConfig: NextConfig = {
         headers: [
           {
             key: 'Content-Security-Policy',
-            // This is the "Master Key" - it allows everything
-            value: "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:; " +
-                   "script-src * 'unsafe-inline' 'unsafe-eval'; " +
-                   "style-src * 'unsafe-inline'; " +
-                   "img-src * data: blob:; " +
-                   "connect-src * data: blob:; " +
-                   "font-src * data:; " +
-                   "frame-src *; " +
-                   "worker-src * blob:; " +
-                   "child-src * blob:;"
+            value: [
+              "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;",
+              "script-src * 'unsafe-inline' 'unsafe-eval' data: blob:;",
+              "connect-src * data: blob:;", // Allows connection to your Vercel/Render backend
+              "img-src * data: blob:;",
+              "style-src * 'unsafe-inline';",
+              "font-src * data:;"
+            ].join(' ')
           },
+          {
+            key: 'Access-Control-Allow-Origin',
+            value: '*' // Helps prevent local CORS blocks during testing
+          }
         ],
       },
     ];
