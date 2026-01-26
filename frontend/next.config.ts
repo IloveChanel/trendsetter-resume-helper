@@ -12,15 +12,18 @@ const nextConfig: NextConfig = {
         source: '/(.*)',
         headers: [
           {
-            key: 'Content-Security-Policy',
-            value: 
-              "default-src 'self'; " +
-              "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live; " +
-              "style-src 'self' 'unsafe-inline'; " +
-              "img-src 'self' blob: data:; " +
-              "connect-src 'self' https://vercel.live https://*.onrender.com; " + 
-              "frame-src https://vercel.live;"
-          },
+  key: 'Content-Security-Policy',
+  value: 
+    "default-src 'self'; " +
+    "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live; " +
+    "style-src 'self' 'unsafe-inline'; " +
+    "img-src 'self' blob: data:; " +
+    // ADDED 'blob:' and 'data:' to connect-src below
+    "connect-src 'self' blob: data: https://vercel.live https://*.onrender.com; " + 
+    "frame-src https://vercel.live; " +
+    // ADDED worker-src for libraries that process files in the background
+    "worker-src 'self' blob:;"
+}
         ],
       },
     ];
