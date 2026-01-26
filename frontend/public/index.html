@@ -1,0 +1,219 @@
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trendsetter AI | Resume Studio</title>
+    
+    <!-- Add this CSP meta tag -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://unpkg.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://trendsetter-resume-helper.vercel.app;">
+    
+    <script src="https://cdn.jsdelivr.net/npm/tailwindcss@3.4.1/dist/tailwind.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #050505; color: white; }
+        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        textarea:focus, input:focus { outline: none; }
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body x-data="resumeStudio()">
+
+    <div class="relative min-h-screen flex flex-col">
+        <div class="fixed top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_50%_50%,rgba(17,24,39,1)_0%,rgba(5,5,5,1)_100%)] -z-10"></div>
+        <div class="fixed top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-600/10 blur-[120px] rounded-full"></div>
+
+        <header class="px-8 py-6 flex justify-between items-center border-b border-white/5">
+            <div class="text-xl font-bold tracking-tighter uppercase">Trendsetter<span class="text-blue-500">AI</span></div>
+            <button @click="reset()" class="text-xs text-gray-500 hover:text-white uppercase tracking-widest transition-colors">New Project</button>
+        </header>
+
+        <main class="flex-1 grid lg:grid-cols-2 gap-0">
+            
+            <section class="p-6 lg:p-12 border-r border-white/5 flex flex-col space-y-6">
+                <div class="flex justify-between items-end">
+                    <h2 class="text-sm font-bold text-blue-400 uppercase tracking-[0.2em]">Optimized Result</h2>
+                    <span class="text-[10px] text-gray-500 uppercase" x-text="lastSaved"></span>
+                </div>
+                
+                <div class="flex-1 glass p-8 rounded-[32px] shadow-2xl relative group min-h-[450px]">
+                    <textarea 
+                        x-model="generatedResume" 
+                        class="w-full h-full bg-transparent text-gray-300 leading-relaxed resize-none text-sm lg:text-base"
+                        placeholder="Your AI-optimized resume will appear here for final edits..."></textarea>
+                </div>
+
+                <div class="grid grid-cols-3 gap-3">
+                    <button @click="download('pdf')" class="py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-bold uppercase transition-all">PDF</button>
+                    <button @click="download('doc')" class="py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-bold uppercase transition-all">Doc</button>
+                    <button @click="download('office')" class="py-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-xs font-bold uppercase transition-all">Office</button>
+                </div>
+                <button @click="alert('Resume Saved!')" class="w-full py-4 bg-blue-600 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-blue-500 shadow-lg shadow-blue-500/20 transition-all">
+                    Save Changes
+                </button>
+            </section>
+
+            <section class="p-6 lg:p-12 bg-black/20 space-y-8 overflow-y-auto">
+                
+           
+
+                <div class="space-y-4">
+                    <h2 class="text-sm font-bold text-gray-500 uppercase tracking-[0.2em]">1. Upload Resume</h2>
+                    <div class="glass p-6 rounded-2xl border-dashed border-white/10 flex flex-col items-center justify-center cursor-pointer hover:border-blue-500/50 transition-all">
+                        <input type="file" @change="handleFileUpload" class="hidden" id="fileInput" name="resume-file">
+                        <label for="fileInput" class="text-center cursor-pointer">
+                            <span class="text-2xl mb-2 block">📄</span>
+                            <span class="text-xs text-gray-400" x-text="fileName || 'Click to upload or drag & drop'"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="space-y-4">
+                    <h2 class="text-sm font-bold text-gray-500 uppercase tracking-[0.2em]">OR Paste Text</h2>
+                    <textarea x-model="originalResumeText" id="resumeText" name="resume-text" placeholder="Paste current resume content here..." class="w-full h-32 bg-white/5 border border-white/10 p-4 rounded-xl text-sm resize-none focus:border-blue-500/50 transition-all"></textarea>
+                </div>
+
+                <div class="space-y-4">
+                    <h2 class="text-sm font-bold text-gray-500 uppercase tracking-[0.2em]">2. Target Job Title</h2>
+                    <input x-model="jobTitle" id="jobTitle" name="job-title" type="text" placeholder="e.g. Senior Project Manager" class="w-full bg-white/5 border border-white/10 p-4 rounded-xl text-sm focus:border-blue-500/50 transition-all">
+                </div>
+                
+                <div class="space-y-4">
+                    <h2 class="text-sm font-bold text-gray-500 uppercase tracking-[0.2em]">3. Job Description</h2>
+                    <textarea x-model="jobDesc" id="jobDescription" name="job-description" placeholder="Paste the job requirements here..." class="w-full h-40 bg-white/5 border border-white/10 p-4 rounded-xl text-sm resize-none focus:border-blue-500/50 transition-all"></textarea>
+                </div>
+
+                <button 
+                    @click="runAnalysis()" 
+                    :disabled="loading"
+                    class="w-full py-5 bg-white text-black rounded-2xl font-black text-lg uppercase tracking-tighter hover:bg-blue-600 hover:text-white transition-all disabled:opacity-50">
+                    <span x-show="!loading">Analyze & Re-Write</span>
+                    <span x-show="loading" class="animate-pulse" x-cloak>AI is Calibrating...</span>
+                </button>
+
+                <div x-show="analyzed" x-transition x-cloak class="space-y-4 pt-8 border-t border-white/5">
+                    <h2 class="text-sm font-bold text-blue-500 uppercase tracking-[0.2em]">ATS Insights</h2>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="glass p-4 rounded-xl text-center">
+                            <div class="text-2xl font-bold" x-text="results.score + '%'"></div>
+                            <div class="text-[10px] text-gray-500 uppercase">Match Score</div>
+                        </div>
+                        <div class="glass p-4 rounded-xl text-center">
+                            <div class="text-2xl font-bold text-green-500" x-text="results.keywordsFound"></div>
+                            <div class="text-[10px] text-gray-500 uppercase">Keywords Hit</div>
+                        </div>
+                    </div>
+                    <div class="glass p-6 rounded-2xl space-y-3">
+                        <h3 class="text-xs font-bold text-gray-400 uppercase">Missing Keywords:</h3>
+                        <div class="flex flex-wrap gap-2">
+                            <template x-for="kw in results.missingKeywords" :key="kw">
+                                <span class="text-[10px] bg-red-500/10 text-red-400 px-2 py-1 rounded-md border border-red-500/20" x-text="kw"></span>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+<script>
+    function resumeStudio() {
+        return {
+            jobTitle: '',
+            jobDesc: '',
+            originalResumeText: '',
+            generatedResume: '',
+            fileName: '',
+            loading: false,
+            analyzed: false,
+            lastSaved: '',
+            results: { score: 0, keywordsFound: 0, missingKeywords: [] },
+
+            async runAnalysis() {
+                if (!this.originalResumeText || !this.jobDesc) {
+                    alert('Please provide your resume and the job description.');
+                    return;
+                }
+
+                this.loading = true;
+                
+                try {
+                    // LIVE BACKEND URL
+                    const API_URL = 'https://trendsetter-resume-helper.vercel.app';
+                    
+                    const formData = new FormData();
+                    formData.append('resume_text', this.originalResumeText);
+                    formData.append('job_description', this.jobDesc);
+                    if (this.jobTitle) formData.append('job_title', this.jobTitle);
+
+                    const response = await fetch(`${API_URL}/api/match-job`, {
+                        method: 'POST',
+                        body: formData,
+                    });
+
+                    if (!response.ok) throw new Error('Analysis failed');
+
+                    const data = await response.json();
+                    
+                    this.results = {
+                        score: data.score || 0,
+                        keywordsFound: data.feedback?.length || 0,
+                        missingKeywords: data.suggestions || []
+                    };
+                    
+                    this.generatedResume = this.generateOptimizedResume(data);
+                    this.analyzed = true;
+                    this.lastSaved = 'Synced: ' + new Date().toLocaleTimeString();
+                    
+                } catch (error) {
+                    console.error('Error:', error);
+                    alert('Could not connect to AI Engine. Check if the backend is awake.');
+                } finally {
+                    this.loading = false;
+                }
+            },
+
+            generateOptimizedResume(data) {
+                let text = `--- ${this.jobTitle.toUpperCase() || 'OPTIMIZED'} RESUME ---\n\n`;
+                text += `${this.originalResumeText}\n\n`;
+                text += `--- AI STRATEGIC ENHANCEMENTS ---\n`;
+                if (data.suggestions?.length) {
+                    data.suggestions.forEach(s => text += `• ${s}\n`);
+                }
+                return text;
+            },
+
+            async handleFileUpload(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                this.fileName = file.name;
+
+                if (file.type.includes('text') || file.name.endsWith('.txt')) {
+                    this.originalResumeText = await file.text();
+                    alert('File Loaded!');
+                } else {
+                    alert('For now, please upload .txt files or copy-paste text directly.');
+                }
+            },
+
+            download(type) {
+                if (!this.generatedResume) return alert('Analyze first!');
+                
+                const blob = new Blob([this.generatedResume], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                const name = this.jobTitle ? this.jobTitle.replace(/\s+/g, '-') : 'resume';
+                a.download = `Trendsetter-${name}.txt`;
+                a.click();
+                URL.revokeObjectURL(url);
+            },
+
+            reset() {
+                if(confirm("Clear current project?")) location.reload();
+            }
+        }
+    }
+</script>
+</body>
+</html>
