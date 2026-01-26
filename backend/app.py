@@ -1,430 +1,579 @@
 
+import io
+import re
+import os
+import json
+import tempfile
+import uvicorn
+import textstat
+from collections import Counter
+from typing import Optional, List, Dict
+
+# Core Libraries
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
-from typing import Optional, List, Dict
-import uvicorn
-import re
-import json
-from collections import Counter
-import openai
-from io import BytesIO
+from docx import Document
+
+# PDF Generation
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import getSampleStyleSheet
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
-from docx import Document
-from docx.shared import Inches
-import tempfile
-import os
 
-app = FastAPI(title="Trendsetter Resume Helper")
+# Conditional imports with fallbacks
+try:
+    import spacy
+    nlp = spacy.load("en_core_web_sm")
+    print("✅ spaCy loaded successfully")
+except:
+    print("⚠️ spaCy not available - using fallback keyword extraction")
+    nlp = None
+
+# --- 1. UPDATED IMPORTS ---
+try:
+    from pypdf import PdfReader
+    print("✅ pypdf (v6+) loaded successfully")
+except ImportError:
+    PdfReader = None
+    print("⚠️ pypdf not found - run pip install pypdf")
+
+# --- 2. FIXED EXTRACTION FUNCTION ---
+def extract_pdf_text(file_obj):
+    if PdfReader is None:
+        return "PDF Error: pypdf library not installed on server."
+    
+    try:
+        # file_obj is the io.BytesIO(file_content) passed from BotAudit
+        reader = PdfReader(file_obj)
+        text = ""
+        for page in reader.pages:
+            extracted = page.extract_text()
+            if extracted:
+                text += extracted + "\n"
+        
+        if not text.strip():
+            return "CRITICAL_ERROR_IMAGE_ONLY"
+            
+        return text
+    except Exception as e:
+        print(f"Extraction failed: {str(e)}")
+        return f"PDF Error: {str(e)}"
+
+# --- BOT AUDIT CLASS (SINGLE DEFINITION) ---
+class BotAudit:
+    """2026 Enterprise-Grade Resume Analysis Engine"""
+    
+    def __init__(self, nlp_model=None):
+        self.nlp = nlp_model
+        self.fluff_words = [
+            "hardworking", "team player", "results-driven", "passionate", 
+            "detail-oriented", "self-motivated", "synergy", "think outside the box",
+            "go-getter", "people person", "perfectionist", "innovative"
+        ]
+        self.leadership_verbs = [
+            "spearheaded", "negotiated", "orchestrated", "architected", 
+            "transformed", "steered", "pioneered", "revolutionized", 
+            "optimized", "streamlined", "accelerated", "dominated",
+            "launched", "established", "founded", "directed", "managed"
+        ]
+        self.support_verbs = [
+            "helped", "assisted", "supported", "participated", "contributed",
+            "worked on", "was responsible for", "handled", "did", "performed"
+        ]
+
+    def parse_and_audit_structure(self, file_content: bytes, filename: str):
+        """Multi-Stage Document Parser with Error Handling"""
+        results = {
+            "contact_in_header": False,
+            "table_detected": False,
+            "text": "",
+            "parsing_safe": True,
+            "file_type": filename.split('.')[-1].lower() if '.' in filename else "unknown"
+        }
+        
+        try:
+            if filename.lower().endswith('.docx'):
+                doc = Document(io.BytesIO(file_content))
+                
+                # Header/Footer Contact Check
+                contact_pattern = r'[\d\-\(\)\+]{10,}|@[\w\.-]+\.[a-zA-Z]{2,}|linkedin\.com'
+                
+                for section in doc.sections:
+                    # Check headers
+                    if section.header and section.header.paragraphs:
+                        for para in section.header.paragraphs:
+                            if re.search(contact_pattern, para.text, re.IGNORECASE):
+                                results["contact_in_header"] = True
+
+                # Table Detection
+                if len(doc.tables) > 0:
+                    results["table_detected"] = True
+
+                # Extract Text
+                full_text = ""
+                for para in doc.paragraphs:
+                    full_text += para.text + "\n"
+                
+                results["text"] = full_text
+                
+            elif filename.lower().endswith('.pdf'):
+                try:
+                    results["text"] = extract_pdf_text(io.BytesIO(file_content))
+                    
+                    # OCR Check
+                    if len(results["text"].strip()) < 100:
+                        results["text"] = "CRITICAL_ERROR_IMAGE_ONLY"
+                        results["parsing_safe"] = False
+                        
+                except Exception as pdf_error:
+                    print(f"PDF parsing error: {pdf_error}")
+                    results["text"] = "PDF_PROCESSING_FAILED"
+                    results["parsing_safe"] = False
+                    
+            else:
+                # Plain text fallback
+                try:
+                    results["text"] = file_content.decode('utf-8', errors='ignore')
+                except:
+                    results["text"] = str(file_content, errors='ignore')
+                
+        except Exception as e:
+            print(f"File parsing error: {e}")
+            results["text"] = f"PARSING_FAILED: {str(e)}"
+            results["parsing_safe"] = False
+            
+        return results
+
+    def check_bot_safety(self, text: str, structure_audit: Dict = None):
+        """Critical Bot-Beater Analysis"""
+        warnings = []
+        safety_score = 100
+        
+        # Critical Errors
+        if text.startswith("CRITICAL_ERROR_IMAGE_ONLY"):
+            return {
+                "safety_score": 0,
+                "is_bot_readable": False,
+                "critical_warnings": ["🚨 CRITICAL: PDF is an image. ATS sees 0 words. Convert to text-based PDF."],
+                "layout_risk": "CRITICAL"
+            }
+            
+        if text.startswith("PDF_PROCESSING_FAILED"):
+            return {
+                "safety_score": 20,
+                "is_bot_readable": False,
+                "critical_warnings": ["🚨 PDF processing failed. Try converting to .docx format."],
+                "layout_risk": "HIGH"
+            }
+            
+        if text.startswith("PARSING_FAILED"):
+            return {
+                "safety_score": 0,
+                "is_bot_readable": False,
+                "critical_warnings": ["🚨 File parsing failed. Check file format and try again."],
+                "layout_risk": "CRITICAL"
+            }
+
+        # Layout Issues
+        if "\t" in text or re.search(r' {5,}', text):
+            warnings.append("🚨 Multi-column layout detected. ATS may scramble text order.")
+            safety_score -= 25
+            
+        if structure_audit and structure_audit.get("table_detected"):
+            warnings.append("🚨 Tables detected. Convert to simple bullet points.")
+            safety_score -= 30
+            
+        if structure_audit and structure_audit.get("contact_in_header"):
+            warnings.append("🚨 Contact info in header/footer is INVISIBLE to ATS bots.")
+            safety_score -= 25
+
+        # Section Headers Check
+        standard_sections = ["experience", "education", "skills", "summary"]
+        found_sections = [s for s in standard_sections if s in text.lower()]
+        
+        if len(found_sections) < 3:
+            warnings.append("🚨 Missing standard section headers. Use: Experience, Education, Skills")
+            safety_score -= 15
+            
+        return {
+            "safety_score": max(safety_score, 0),
+            "is_bot_readable": safety_score > 70,
+            "critical_warnings": warnings,
+            "layout_risk": "HIGH" if safety_score < 50 else "MEDIUM" if safety_score < 80 else "LOW",
+            "found_sections": found_sections
+        }
+
+    def analyze_advanced_metrics(self, text: str):
+        """Advanced Resume Metrics Analysis"""
+        if text.startswith(("CRITICAL_ERROR", "PDF_PROCESSING_FAILED", "PARSING_FAILED")):
+            return {
+                "readability": {"grade_level": 0, "assessment": "Cannot analyze - file processing failed"},
+                "verb_strength": 0,
+                "metric_count": 0,
+                "stuffed_keywords": [],
+                "fluff_words": [],
+                "impact_score": 0,
+                "analysis_possible": False
+            }
+        
+        lines = [l.strip() for l in text.split('\n') if len(l.strip()) > 10]
+        text_lower = text.lower()
+        
+        # 1. Readability Analysis
+        try:
+            grade = textstat.flesch_kincaid_grade(text)
+            assessment = "Easy to Read" if grade < 10 else "Professional Level" if grade < 14 else "Too Complex"
+        except:
+            grade = 12
+            assessment = "Professional Level"
+            
+        # 2. Action Verb Analysis
+        power_count = sum(1 for v in self.leadership_verbs if v in text_lower)
+        weak_count = sum(1 for v in self.support_verbs if v in text_lower)
+        
+        if power_count + weak_count > 0:
+            verb_strength = (power_count / (power_count + weak_count)) * 100
+        else:
+            verb_strength = 0
+        
+        # 3. Quantifiable Metrics
+        metric_patterns = [r'\d+%', r'\$[\d,]+', r'\d+\+', r'\d+x', r'\d+k\+?', r'\d+m\+?']
+        metric_count = sum(len(re.findall(pattern, text, re.IGNORECASE)) for pattern in metric_patterns)
+        
+        # 4. Keyword Stuffing Detection
+        words = re.findall(r'\b[a-zA-Z]{4,}\b', text_lower)
+        if words:
+            word_freq = Counter(words)
+            total_words = len(words)
+            stuffed = [(w, c, round(c/total_words*100, 1)) for w, c in word_freq.items() 
+                      if c/total_words > 0.05 and c > 3]
+        else:
+            stuffed = []
+
+        # 5. Buzzword Detection
+        fluff_found = [word for word in self.fluff_words if word in text_lower]
+
+        # 6. Digital Presence
+        linkedin_found = bool(re.search(r'linkedin\.com/in/[\w\-]+', text_lower))
+        email_found = bool(re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', text))
+
+        return {
+            "readability": {"grade_level": grade, "assessment": assessment},
+            "verb_strength": round(verb_strength, 1),
+            "metric_count": metric_count,
+            "stuffed_keywords": stuffed,
+            "fluff_words": fluff_found,
+            "impact_score": min(100, metric_count * 20),
+            "digital_presence": {"linkedin_found": linkedin_found, "email_found": email_found},
+            "analysis_possible": True
+        }
+
+    def extract_keywords(self, text: str, max_keywords: int = 15):
+        """Keyword Extraction with Fallback"""
+        if self.nlp:
+            try:
+                doc = self.nlp(text.lower())
+                keywords = []
+                for token in doc:
+                    if (token.pos_ in ['NOUN', 'PROPN', 'ADJ'] and 
+                        not token.is_stop and 
+                        not token.is_punct and 
+                        len(token.text) > 3):
+                        keywords.append(token.text)
+                
+                keyword_counts = Counter(keywords)
+                return [kw for kw, count in keyword_counts.most_common(max_keywords)]
+            except:
+                pass
+        
+        # Fallback method
+        words = re.findall(r'\b[a-zA-Z]{4,}\b', text.lower())
+        stop_words = {
+            'that', 'with', 'have', 'this', 'will', 'from', 'they', 'been', 'were',
+            'when', 'what', 'where', 'there', 'these', 'those', 'then', 'than'
+        }
+        filtered = [w for w in words if w not in stop_words]
+        word_counts = Counter(filtered)
+        return [word for word, count in word_counts.most_common(max_keywords)]
+
+# --- FASTAPI APP (SINGLE DEFINITION) ---
+app = FastAPI(
+    title="Trendsetter AI Resume Helper 2026",
+    description="Enterprise-Grade Resume Optimization Engine - Backend for https://trendsetter-resume-helper.onrender.com",
+    version="2.0.0"
+)
+
+# ...existing code...
+
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000",
-        "http://localhost:3001", 
-        "https://*.vercel.app",  # ✅ Allows all Vercel deployments
-        "https://trendsetter-resume-helper.onrender.com"
+        "https://trendsetter-resume-helper.onrender.com",  # Production backend
+        "http://localhost:3000",                          # Local development
+        "http://127.0.0.1:3000",
+        "http://localhost:5500",                          # Live Server
+        "http://127.0.0.1:5500",
+        "https://*.vercel.app",                           # Vercel deployments wildcard
+        "https://trendsetter-resume-helper.vercel.app",   # Specific Vercel URL
+        "*"                                               # Development fallback
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Load spaCy for NLP (install: python -m spacy download en_core_web_sm)
-try:
-    import spacy
-    nlp = spacy.load("en_core_web_sm")
-except (ImportError, OSError):
-    nlp = None
+# 
+# Initialize Bot Audit AFTER class definition
+bot_audit = BotAudit(nlp)
 
-class ResumeAnalyzer:
-    def __init__(self):
-        self.action_verbs = [
-            "achieved", "managed", "increased", "improved", "developed", "created", 
-            "implemented", "optimized", "streamlined", "delivered", "led", "built",
-            "designed", "executed", "coordinated", "supervised", "analyzed"
-        ]
-        
-        self.ats_killer_words = [
-            "table", "column", "graphic", "image", "chart", "diagram",
-            "header", "footer", "textbox", "sidebar"
-        ]
-
-    def extract_keywords_advanced(self, job_description: str) -> Dict:
-        """Advanced keyword extraction using NLP and semantic analysis"""
-        text = job_description.lower()
-        
-        # Technical skills patterns (2026 enhanced)
-        tech_skills = []
-        skill_patterns = [
-            r'\b(python|java|javascript|typescript|react|angular|vue|node\.?js)\b',
-            r'\b(sql|nosql|mongodb|postgresql|mysql|redis)\b',
-            r'\b(aws|azure|gcp|docker|kubernetes|jenkins|git)\b',
-            r'\b(machine learning|ai|data science|analytics|tensorflow|pytorch)\b',
-            r'\b(rest|api|microservices|devops|ci\/cd|agile|scrum)\b'
-        ]
-        
-        for pattern in skill_patterns:
-            matches = re.findall(pattern, text)
-            tech_skills.extend(matches)
-        
-        # Extract requirements using NER-like approach
-        requirements = []
-        req_patterns = [
-            r'(?:required?|must have|need):?\s*([^.;]+)',
-            r'(?:experience with|proficient in|skilled in):?\s*([^.;]+)',
-            r'(?:\d+\+?\s*years?):?\s*(?:of\s*)?([^.;]+)'
-        ]
-        
-        for pattern in req_patterns:
-            matches = re.findall(pattern, text, re.IGNORECASE)
-            requirements.extend([match.strip() for match in matches])
-        
-        # Soft skills extraction
-        soft_skills = []
-        soft_patterns = [
-            r'\b(leadership|communication|teamwork|problem.solving|analytical)\b',
-            r'\b(collaboration|organization|time.management|adaptability)\b'
-        ]
-        
-        for pattern in soft_patterns:
-            matches = re.findall(pattern, text)
-            soft_skills.extend(matches)
-        
-        return {
-            "tech_skills": list(set(tech_skills)),
-            "requirements": list(set(requirements[:10])),
-            "soft_skills": list(set(soft_skills)),
-            "all_keywords": list(set(tech_skills + soft_skills))
-        }
-
-    def analyze_resume_structure(self, resume_text: str) -> Dict:
-        """Analyze resume structure and ATS compatibility"""
-        issues = []
-        score = 100
-        
-        # Check for ATS-killer elements
-        for killer in self.ats_killer_words:
-            if killer in resume_text.lower():
-                issues.append(f"Remove {killer}s - use simple text formatting")
-                score -= 10
-        
-        # Check for proper sections
-        required_sections = ["experience", "education", "skills"]
-        missing_sections = []
-        
-        for section in required_sections:
-            if not re.search(rf'\b{section}\b', resume_text.lower()):
-                missing_sections.append(section)
-                issues.append(f"Add clear {section.title()} section")
-                score -= 15
-        
-        # Check for action verbs
-        action_verb_count = 0
-        for verb in self.action_verbs:
-            if verb in resume_text.lower():
-                action_verb_count += 1
-        
-        if action_verb_count < 3:
-            issues.append("Use more action verbs (achieved, managed, improved, etc.)")
-            score -= 10
-        
-        # Check for quantified achievements
-        numbers = re.findall(r'\d+%|\$\d+|\d+\+', resume_text)
-        if len(numbers) < 2:
-            issues.append("Add quantified achievements with numbers/percentages")
-            score -= 15
-        
-        return {
-            "score": max(score, 0),
-            "issues": issues,
-            "action_verb_count": action_verb_count,
-            "quantified_achievements": len(numbers)
-        }
-
-    def calculate_keyword_match(self, resume_text: str, job_keywords: Dict) -> Dict:
-        """Calculate semantic keyword matching with TF-IDF approach"""
-        resume_lower = resume_text.lower()
-        
-        # Tech skills matching
-        tech_matched = []
-        tech_missing = []
-        
-        for skill in job_keywords["tech_skills"]:
-            if skill.lower() in resume_lower:
-                tech_matched.append(skill)
-            else:
-                tech_missing.append(skill)
-        
-        # Soft skills matching
-        soft_matched = []
-        soft_missing = []
-        
-        for skill in job_keywords["soft_skills"]:
-            if skill.lower() in resume_lower:
-                soft_matched.append(skill)
-            else:
-                soft_missing.append(skill)
-        
-        # Calculate scores
-        total_keywords = len(job_keywords["all_keywords"])
-        total_matched = len(tech_matched) + len(soft_matched)
-        
-        match_score = (total_matched / total_keywords * 100) if total_keywords > 0 else 0
-        
-        return {
-            "score": round(match_score, 1),
-            "tech_matched": tech_matched,
-            "tech_missing": tech_missing[:5],  # Top 5 missing
-            "soft_matched": soft_matched,
-            "soft_missing": soft_missing[:3],  # Top 3 missing
-            "total_matched": total_matched,
-            "total_keywords": total_keywords
-        }
-
-    def generate_ai_improvements(self, resume_text: str, keyword_analysis: Dict, ats_analysis: Dict) -> List[str]:
-        """Generate AI-powered improvement suggestions"""
-        improvements = []
-        
-        # Keyword improvements
-        if keyword_analysis["tech_missing"]:
-            improvements.append(f"🔧 Add these technical skills: {', '.join(keyword_analysis['tech_missing'][:3])}")
-            improvements.append(f"💡 Incorporate '{keyword_analysis['tech_missing'][0]}' in your work experience bullets")
-        
-        # Soft skills improvements
-        if keyword_analysis["soft_missing"]:
-            improvements.append(f"🤝 Highlight these soft skills: {', '.join(keyword_analysis['soft_missing'])}")
-        
-        # ATS improvements
-        for issue in ats_analysis["issues"][:3]:
-            improvements.append(f"⚡ {issue}")
-        
-        # Action verb improvements
-        if ats_analysis["action_verb_count"] < 5:
-            improvements.append("📈 Replace weak verbs with action verbs: managed, achieved, increased")
-        
-        # Quantification improvements
-        if ats_analysis["quantified_achievements"] < 3:
-            improvements.append("📊 Add specific numbers: 'Increased sales by 25%' instead of 'Increased sales'")
-        
-        return improvements[:6]  # Top 6 recommendations
-
-analyzer = ResumeAnalyzer()
-
-class FixedResume(BaseModel):
-    original_text: str
-    fixed_text: str
-    improvements_applied: List[str]
+# --- API ENDPOINTS ---
 
 @app.get("/")
-def root():
-    return {"message": "Trendsetter Resume Helper API ✅"}
+async def root():
+    return {
+        "message": "Trendsetter AI Resume Helper 2026",
+        "status": "active",
+        "version": "2.0.0",
+        "features": {
+            "spacy_nlp": nlp is not None,
+            "pdf_processing": "extract_pdf_text" in globals(),
+            "docx_processing": True,
+            "advanced_analytics": True
+        }
+    }
+
+@app.post("/api/scan-resume")
+async def scan_resume(file: UploadFile = File(...)):
+    try:
+        content = await file.read()
+        
+        # Parse and audit file structure
+        audit_results = bot_audit.parse_and_audit_structure(content, file.filename)
+        
+        # Analyze bot safety
+        bot_safety = bot_audit.check_bot_safety(audit_results["text"], audit_results)
+        
+        # Advanced metrics analysis
+        metrics = bot_audit.analyze_advanced_metrics(audit_results["text"])
+        
+        return {
+            "success": True,
+            "filename": file.filename,
+            "file_type": audit_results["file_type"],
+            "text_length": len(audit_results["text"]),
+            "parsing_successful": audit_results["parsing_safe"],
+            "bot_safety": bot_safety,
+            "metrics": metrics,
+            "text_preview": audit_results["text"][:300] + "..." if len(audit_results["text"]) > 300 else audit_results["text"]
+        }
+        
+    except Exception as e:
+        print(f"Scan error: {e}")
+        raise HTTPException(status_code=500, detail=f"File processing error: {str(e)}")
+
+# ...existing code...
+
+# ...existing code...
+
+# ...existing code...
 
 @app.post("/api/match-job")
 async def match_job(
     resume_text: str = Form(...),
     job_description: str = Form(...),
-    job_title: str = Form("")
+    job_title: str = Form(""),
+    resume_file: UploadFile = File(None)
 ):
     try:
-        # Extract keywords using advanced NLP
-        job_keywords = analyzer.extract_keywords_advanced(job_description)
+        print(f"🔍 Processing job match for: {job_title or 'Unknown Position'}")
         
-        # Analyze resume structure and ATS compatibility
-        ats_analysis = analyzer.analyze_resume_structure(resume_text)
+        # Process uploaded file if provided
+        structure_audit = None
+        if resume_file and resume_file.filename:
+            print("📄 Processing uploaded resume file...")
+            file_content = await resume_file.read()
+            parsed_result = bot_audit.parse_and_audit_structure(file_content, resume_file.filename)
+            if parsed_result["parsing_safe"]:
+                resume_text = parsed_result["text"]
+                structure_audit = parsed_result
+                print(f"✅ File processed: {len(resume_text)} characters")
+
+        # Ensure we have valid text input
+        if not resume_text or not isinstance(resume_text, str):
+            resume_text = ""
+        if not job_description or not isinstance(job_description, str):
+            job_description = ""
+
+        # Strict truncation to prevent timeouts (5K is the sweet spot)
+        resume_text = resume_text[:5000]
+        job_description = job_description[:5000]
         
-        # Calculate keyword matching with semantic understanding
-        keyword_analysis = analyzer.calculate_keyword_match(resume_text, job_keywords)
+        print("🔤 Extracting keywords...")
+        # Extract keywords with shorter limits for speed
+        job_keywords = bot_audit.extract_keywords(job_description, max_keywords=15) or []
         
-        # Generate AI-powered improvements
-        improvements = analyzer.generate_ai_improvements(resume_text, keyword_analysis, ats_analysis)
+        print(f"✅ Found {len(job_keywords)} job keywords")
         
-        # Calculate overall score using weighted approach
-        ats_weight = 0.4
-        keyword_weight = 0.6
-        overall_score = (ats_analysis["score"] * ats_weight) + (keyword_analysis["score"] * keyword_weight)
+        # Direct matching (faster than nested loops)
+        resume_lower = resume_text.lower()
+        matched_keywords = [kw for kw in job_keywords if kw in resume_lower] or []
+        missing_keywords = [kw for kw in job_keywords if kw not in resume_lower][:8] or []
         
+        keyword_score = (len(matched_keywords) / len(job_keywords) * 100) if job_keywords else 0
+        
+        print("🤖 Analyzing bot safety...")
+        # Bot safety analysis
+        bot_safety = bot_audit.check_bot_safety(resume_text, structure_audit) or {}
+        
+        print("📊 Computing advanced metrics...")
+        # Advanced metrics
+        metrics = bot_audit.analyze_advanced_metrics(resume_text) or {}
+        
+        # Calculate final ATS score
+        ats_score = min(95, max(5, int((keyword_score * 0.6) + (bot_safety.get("safety_score", 0) * 0.4))))
+        
+        # Determine overall grade
+        if ats_score >= 85: 
+            overall_grade = "A"
+        elif ats_score >= 70: 
+            overall_grade = "B"
+        elif ats_score >= 55: 
+            overall_grade = "C"
+        else: 
+            overall_grade = "D"
+        
+        print(f"🎯 Analysis complete: {ats_score}% (Grade {overall_grade})")
+        
+        # Make sure the RETURN object has every key the frontend expects
         return {
-            "match_result": {"score": keyword_analysis["score"]},
-            "ats_result": {"score": ats_analysis["score"]},
-            "grammar_result": {"readability_score": 90},  # Placeholder - can add readability analysis
-            "keyword_details": {
-                "tech_matched": keyword_analysis["tech_matched"],
-                "tech_missing": keyword_analysis["tech_missing"],
-                "soft_matched": keyword_analysis["soft_matched"],
-                "soft_missing": keyword_analysis["soft_missing"],
-                "job_keywords": job_keywords["all_keywords"]
+            "success": True,
+            "ats_score": ats_score,
+            "overall_grade": overall_grade,
+            "keyword_analysis": {
+                "score": round(keyword_score, 1),
+                "matched_keywords": matched_keywords or [], # 'or []' prevents null
+                "missing_keywords": missing_keywords or [],
+                "total_job_keywords": len(job_keywords)
             },
-            "optimization": {
-                "priority_fixes": improvements,
-                "ats_issues": ats_analysis["issues"],
-                "action_verb_count": ats_analysis["action_verb_count"],
-                "quantified_achievements": ats_analysis["quantified_achievements"]
-            },
-            "overall_score": round(overall_score, 1),
-            "can_auto_fix": len(improvements) > 0
+            "bot_safety": bot_safety or {},
+            "metrics": metrics or {},
+            "recommendations": {
+                "priority_fixes": bot_safety.get("critical_warnings", [])[:3],
+                "impact_improvements": [
+                    f"Add {max(0, 5-metrics.get('metric_count', 0))} more quantified achievements" if metrics.get('metric_count', 0) < 5 else "Good use of metrics",
+                    f"Replace {len(metrics.get('fluff_words', []))} buzzwords with specific examples" if metrics.get('fluff_words', []) else "Content quality is good"
+                ],
+                "overall_grade": overall_grade
+            }
         }
         
     except Exception as e:
+        print(f"❌ Job matching error: {e}")
         return {
-            "match_result": {"score": 0},
-            "ats_result": {"score": 0}, 
-            "grammar_result": {"readability_score": 0},
-            "keyword_details": {"error": str(e)},
-            "optimization": {"priority_fixes": ["Analysis failed - please try again"]},
-            "overall_score": 0,
-            "can_auto_fix": False
+            "success": False,
+            "error": str(e),
+            "ats_score": 0,
+            "overall_grade": "F",
+            "keyword_analysis": {
+                "score": 0,
+                "matched_keywords": [], # Always array, never null
+                "missing_keywords": [],
+                "total_job_keywords": 0
+            },
+            "bot_safety": {
+                "safety_score": 0,
+                "is_bot_readable": False,
+                "critical_warnings": [f"Analysis failed: {str(e)}"],
+                "layout_risk": "CRITICAL",
+                "found_sections": []
+            },
+            "metrics": {
+                "readability": {"grade_level": 0, "assessment": "Analysis failed"},
+                "verb_strength": 0,
+                "metric_count": 0,
+                "stuffed_keywords": [],
+                "fluff_words": [],
+                "impact_score": 0,
+                "digital_presence": {"linkedin_found": False, "email_found": False},
+                "analysis_possible": False
+            },
+            "recommendations": {
+                "priority_fixes": [f"Analysis failed: {str(e)}"],
+                "impact_improvements": [],
+                "overall_grade": "F"
+            }
         }
 
-@app.post("/api/auto-fix-resume")
-async def auto_fix_resume(
-    resume_text: str = Form(...),
-    job_description: str = Form(...),
-    improvements: str = Form(...)  # JSON string of selected improvements
-):
-    """Auto-fix resume based on analysis and return improved version"""
-    try:
-        selected_improvements = json.loads(improvements)
-        
-        # Extract missing keywords
-        job_keywords = analyzer.extract_keywords_advanced(job_description)
-        keyword_analysis = analyzer.calculate_keyword_match(resume_text, job_keywords)
-        
-        # Apply AI-powered fixes
-        fixed_resume = resume_text
-        applied_fixes = []
-        
-        # Add missing technical skills to skills section
-        if "tech_missing" in str(selected_improvements):
-            missing_tech = keyword_analysis["tech_missing"][:3]
-            if missing_tech:
-                # Find or create skills section
-                if "skills" in fixed_resume.lower():
-                    # Add to existing skills section
-                    skills_match = re.search(r'(skills?[:\s]*[^\n]*)', fixed_resume, re.IGNORECASE)
-                    if skills_match:
-                        original_skills = skills_match.group(1)
-                        new_skills = original_skills + f", {', '.join(missing_tech)}"
-                        fixed_resume = fixed_resume.replace(original_skills, new_skills)
-                        applied_fixes.append(f"Added technical skills: {', '.join(missing_tech)}")
-                else:
-                    # Add new skills section
-                    skills_section = f"\n\nSKILLS\n{', '.join(missing_tech)}, Communication, Problem-solving"
-                    fixed_resume += skills_section
-                    applied_fixes.append(f"Created Skills section with: {', '.join(missing_tech)}")
-        
-        # Enhance action verbs
-        if "action verbs" in str(selected_improvements).lower():
-            weak_verbs = ["did", "was", "were", "had", "worked on", "responsible for"]
-            strong_verbs = ["achieved", "managed", "developed", "implemented", "optimized", "led"]
-            
-            for i, weak in enumerate(weak_verbs):
-                if weak in fixed_resume.lower() and i < len(strong_verbs):
-                    fixed_resume = re.sub(rf'\b{weak}\b', strong_verbs[i], fixed_resume, count=1, flags=re.IGNORECASE)
-                    applied_fixes.append(f"Replaced '{weak}' with '{strong_verbs[i]}'")
-        
-        # Add quantified achievements
-        if "numbers" in str(selected_improvements).lower() or "quantified" in str(selected_improvements).lower():
-            # Add percentage improvements to bullet points
-            bullet_pattern = r'(•|\*|-)\s*([^.\n]+)'
-            matches = re.findall(bullet_pattern, fixed_resume)
-            
-            if matches and len(matches) > 0:
-                # Enhance first bullet point with quantification
-                first_bullet = matches[0][1]
-                if not re.search(r'\d+%|\d+\+|\$\d+', first_bullet):
-                    enhanced_bullet = first_bullet + " (increased efficiency by 25%)"
-                    fixed_resume = fixed_resume.replace(first_bullet, enhanced_bullet, 1)
-                    applied_fixes.append("Added quantified achievement example")
-        
-        return {
-            "original_text": resume_text,
-            "fixed_text": fixed_resume,
-            "improvements_applied": applied_fixes,
-            "word_count_change": len(fixed_resume.split()) - len(resume_text.split())
-        }
-        
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Auto-fix failed: {str(e)}")
-
+# ...existing code...
 @app.post("/api/generate-resume-file")
 async def generate_resume_file(
-    resume_text: str = Form(...),
-    format_type: str = Form("pdf")  # pdf or docx
+    resume_text: str = Form(...), 
+    format_type: str = Form("pdf")
 ):
-    """Generate downloadable resume file"""
     try:
         temp_dir = tempfile.mkdtemp()
-        
-        if format_type == "pdf":
-            file_path = os.path.join(temp_dir, "improved_resume.pdf")
+        timestamp = "2026-01-26"
+        file_name = f"ATS_Optimized_Resume_{timestamp}.{format_type.lower()}"
+        file_path = os.path.join(temp_dir, file_name)
+
+        if format_type.lower() == "pdf":
+            doc = SimpleDocTemplate(file_path, pagesize=letter, 
+                                  topMargin=72, bottomMargin=72,
+                                  leftMargin=72, rightMargin=72)
             
-            # Create PDF using reportlab
-            doc = SimpleDocTemplate(file_path, pagesize=letter)
             styles = getSampleStyleSheet()
-            
-            # Parse resume text into sections
-            lines = resume_text.split('\n')
             story = []
             
-            for line in lines:
+            for line in resume_text.split('\n'):
                 if line.strip():
-                    if line.isupper() or (len(line) < 50 and not line.startswith((' ', '\t'))):
-                        # Section header
-                        story.append(Paragraph(line.strip(), styles['Heading2']))
+                    # Determine appropriate style
+                    if line.isupper() or (len(line) < 50 and not line.startswith('•')):
+                        story.append(Paragraph(line, styles['Heading2']))
                     else:
-                        # Body text
-                        story.append(Paragraph(line.strip(), styles['Normal']))
+                        story.append(Paragraph(line, styles['Normal']))
                     story.append(Spacer(1, 6))
             
             doc.build(story)
             
-        else:  # docx
-            file_path = os.path.join(temp_dir, "improved_resume.docx")
-            
-            # Create DOCX using python-docx
+        else:  # DOCX
             doc = Document()
-            
-            # Add content
-            lines = resume_text.split('\n')
-            for line in lines:
+            for line in resume_text.split('\n'):
                 if line.strip():
-                    if line.isupper() or (len(line) < 50 and not line.startswith((' ', '\t'))):
-                        # Section header
-                        heading = doc.add_heading(line.strip(), level=2)
-                    else:
-                        # Body text
-                        doc.add_paragraph(line.strip())
-            
+                    doc.add_paragraph(line)
             doc.save(file_path)
-        
+
         return FileResponse(
-            file_path,
-            media_type='application/pdf' if format_type == 'pdf' else 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-            filename=f"improved_resume.{format_type}"
+            file_path, 
+            filename=file_name,
+            headers={"Content-Disposition": f"attachment; filename={file_name}"}
         )
         
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"File generation failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"File generation error: {str(e)}")
 
-# Existing endpoints
-@app.post("/api/scan-resume")
-async def scan_resume(file: UploadFile = File(...)):
-    content = await file.read()
-    text_content = content.decode('utf-8', errors='ignore')
+@app.get("/api/health")
+async def health_check():
     return {
-        "text": text_content,
-        "word_count": len(text_content.split()),
-        "line_count": len(text_content.splitlines()),
-        "ats_score": 75,
-        "keywords": ["placeholder", "keywords"]
+        "status": "healthy",
+        "timestamp": "2026-01-26",
+        "features": {
+            "spacy_nlp": nlp is not None,
+            "pdf_processing": "extract_pdf_text" in globals() and callable(extract_pdf_text),
+            "docx_processing": True,
+            "advanced_metrics": True,
+            "file_generation": True
+        },
+        "version": "2.0.0"
     }
+# ...existing code...
 
-application = app
-
+# --- STARTUP SECTION (KEEP FOR LOCAL DEVELOPMENT) ---
 if __name__ == "__main__":
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    print("🚀 Starting Trendsetter AI Resume Helper 2026...")
+    print(f"📊 spaCy NLP: {'✅ Active' if nlp else '⚠️ Fallback mode'}")
+    print(f"📄 PDF Processing: {'✅ Active' if 'extract_pdf_text' in globals() else '⚠️ DOCX only'}")
+    print("🎯 Enterprise Analytics: ✅ Active")
+    
+    uvicorn.run("app:app", host="0.0.0.0", port=8000, log_level="info", reload=True)
