@@ -2,41 +2,42 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // 1. Ignore TS errors to ensure the build finishes even with minor type mismatches
   typescript: { 
     ignoreBuildErrors: true 
   },
 
-  // 2. Routing logic to serve your masterpiece index.html
-  async rewrites() {
-    return [
-      {
-        source: '/',
-        destination: '/index.html',
-      },
-    ];
-  },
+  // REMOVE the rewrites - they're causing issues
+  // async rewrites() { ... } 
 
-  // 3. Security Headers - Crucial for CDN and API communication
+  // ULTRA-PERMISSIVE CSP - Allows EVERYTHING
   async headers() {
     return [
       {
-        source: '/(.*)',
+        source: '/:path*',
         headers: [
           {
             key: 'Content-Security-Policy',
-            value: [
-              "default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;",
-              "script-src * 'unsafe-inline' 'unsafe-eval' data: blob:;",
-              "connect-src * data: blob:;", // Allows connection to your Vercel/Render backend
-              "img-src * data: blob:;",
-              "style-src * 'unsafe-inline';",
-              "font-src * data:;"
-            ].join(' ')
+            value: "default-src * 'unsafe-inline' 'unsafe-eval' data: blob: filesystem:; script-src * 'unsafe-inline' 'unsafe-eval'; connect-src * 'unsafe-inline'; img-src * data: blob: 'unsafe-inline'; frame-src *; style-src * 'unsafe-inline';"
+          },
+          {
+            key: 'X-Content-Security-Policy',
+            value: "default-src * 'unsafe-inline' 'unsafe-eval' data: blob: filesystem:;"
+          },
+          {
+            key: 'X-WebKit-CSP',
+            value: "default-src * 'unsafe-inline' 'unsafe-eval' data: blob: filesystem:;"
           },
           {
             key: 'Access-Control-Allow-Origin',
-            value: '*' // Helps prevent local CORS blocks during testing
+            value: '*'
+          },
+          {
+            key: 'Access-Control-Allow-Methods',
+            value: 'GET, POST, PUT, DELETE, OPTIONS'
+          },
+          {
+            key: 'Access-Control-Allow-Headers',
+            value: '*'
           }
         ],
       },
