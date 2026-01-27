@@ -189,7 +189,6 @@ function resumeStudio() {
         grammarStatus: 'Clean',
         impactVerbsCount: 0,
         metricsCount: 0,
-        botWarnings: [],
         overallGrade: 'F',
 
         // --- Core Analysis Logic ---
@@ -237,7 +236,7 @@ function resumeStudio() {
 
                 // --- ENHANCED DEFENSIVE DATA HANDLING ---
                 const keywordData = data?.keyword_analysis || { matched_keywords: [], missing_keywords: [], score: 0 };
-                const botData = data?.bot_safety || { critical_warnings: [], safety_score: 0 };
+                const atsData = data?.ats_compatibility || { critical_warnings: [], compatibility_score: 0 };
                 const metricsData = data?.metrics || { verb_strength: 0, metric_count: 0 };
                 
                 // Sanitizing strings and arrays to prevent .toLowerCase() crashes
@@ -249,7 +248,7 @@ function resumeStudio() {
                     .filter(kw => kw && typeof kw === 'string')
                     .map(kw => kw.toLowerCase());
                 
-                const safeWarnings = (botData.critical_warnings || [])
+                const safeWarnings = (atsData.critical_warnings || [])
                     .filter(warning => warning && typeof warning === 'string');
 
                 // Map results to Alpine.js state
@@ -258,7 +257,7 @@ function resumeStudio() {
                 this.overallGrade = data?.overall_grade || "F";
                 this.matchedKeywords = safeMatched;
                 this.missingKeywords = safeMissing;
-                this.botWarnings = safeWarnings;
+                this.atsWarnings = safeWarnings;
                 
                 // Logic for UI indicators
                 this.grammarStatus = (safeWarnings.length === 0) ? 'Perfect' : 'Review';
@@ -272,7 +271,7 @@ function resumeStudio() {
                 this.atsScore = 0;
                 this.overallGrade = "F";
                 this.missingKeywords = ["Analysis failed"];
-                this.botWarnings = [`Error: ${error.message}`];
+                this.atsWarnings = [`Error: ${error.message}`];
                 alert(`Analysis Error: ${error.message}`);
             } finally {
                 this.loading = false;

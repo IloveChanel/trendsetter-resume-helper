@@ -37,31 +37,40 @@ try:
 except ImportError:
     PdfReader = None
     print("⚠️ pypdf not found - run pip install pypdf")
-
-# --- 2. FIXED EXTRACTION FUNCTION ---
+# ...existing code...
 def extract_pdf_text(file_obj):
     if PdfReader is None:
         return "PDF Error: pypdf library not installed on server."
     
     try:
-        # file_obj is the io.BytesIO(file_content) passed from BotAudit
+        # Ensure we're at the start of the file stream
+        file_obj.seek(0)
         reader = PdfReader(file_obj)
         text = ""
+        
+        # Extract text from all pages
         for page in reader.pages:
             extracted = page.extract_text()
             if extracted:
                 text += extracted + "\n"
         
-        if not text.strip():
+        # Enhanced check for image-only PDFs
+        text_stripped = text.strip()
+        if not text_stripped or len(text_stripped) < 50:
+            return "CRITICAL_ERROR_IMAGE_ONLY"
+        
+        # Additional check for garbled text (common with scanned PDFs)
+        if len(text_stripped.split()) < 10:
             return "CRITICAL_ERROR_IMAGE_ONLY"
             
         return text
     except Exception as e:
-        print(f"Extraction failed: {str(e)}")
+        print(f"PDF extraction failed: {str(e)}")
         return f"PDF Error: {str(e)}"
+# ...existing code...
 
-# --- BOT AUDIT CLASS (SINGLE DEFINITION) ---
-class BotAudit:
+# ---  AUDIT CLASS (SINGLE DEFINITION) ---
+class ResumeAuditor:
     """2026 Enterprise-Grade Resume Analysis Engine"""
     
     def __init__(self, nlp_model=None):
@@ -145,32 +154,32 @@ class BotAudit:
             
         return results
 
-    def check_bot_safety(self, text: str, structure_audit: Dict = None):
-        """Critical Bot-Beater Analysis"""
+    def check_ats_compatibility(self, text: str, structure_audit: Dict = None):
+        """ATS Readability and Parsing Audit"""
         warnings = []
-        safety_score = 100
+        compatibility_score = 100
         
         # Critical Errors
         if text.startswith("CRITICAL_ERROR_IMAGE_ONLY"):
             return {
-                "safety_score": 0,
-                "is_bot_readable": False,
+                "compatibility_score": 0,
+                "is_ats_friendly": False,
                 "critical_warnings": ["🚨 CRITICAL: PDF is an image. ATS sees 0 words. Convert to text-based PDF."],
                 "layout_risk": "CRITICAL"
             }
             
         if text.startswith("PDF_PROCESSING_FAILED"):
             return {
-                "safety_score": 20,
-                "is_bot_readable": False,
+                "compatibility_score": 20,
+                "is_ats_friendly": False,
                 "critical_warnings": ["🚨 PDF processing failed. Try converting to .docx format."],
                 "layout_risk": "HIGH"
             }
             
         if text.startswith("PARSING_FAILED"):
             return {
-                "safety_score": 0,
-                "is_bot_readable": False,
+                "compatibility_score": 0,
+                "is_ats_friendly": False,
                 "critical_warnings": ["🚨 File parsing failed. Check file format and try again."],
                 "layout_risk": "CRITICAL"
             }
@@ -178,15 +187,15 @@ class BotAudit:
         # Layout Issues
         if "\t" in text or re.search(r' {5,}', text):
             warnings.append("🚨 Multi-column layout detected. ATS may scramble text order.")
-            safety_score -= 25
+            compatibility_score -= 25
             
         if structure_audit and structure_audit.get("table_detected"):
             warnings.append("🚨 Tables detected. Convert to simple bullet points.")
-            safety_score -= 30
+            compatibility_score -= 30
             
         if structure_audit and structure_audit.get("contact_in_header"):
-            warnings.append("🚨 Contact info in header/footer is INVISIBLE to ATS bots.")
-            safety_score -= 25
+             warnings.append("🚨 Contact info in header/footer is unreadable by many Applicant Tracking Systems (ATS).")
+             compatibility_score -= 25
 
         # Section Headers Check
         standard_sections = ["experience", "education", "skills", "summary"]
@@ -194,13 +203,13 @@ class BotAudit:
         
         if len(found_sections) < 3:
             warnings.append("🚨 Missing standard section headers. Use: Experience, Education, Skills")
-            safety_score -= 15
+            compatibility_score -= 15
             
         return {
-            "safety_score": max(safety_score, 0),
-            "is_bot_readable": safety_score > 70,
+            "compatibility_score": max(compatibility_score, 0),
+            "is_ats_friendly": compatibility_score > 70,
             "critical_warnings": warnings,
-            "layout_risk": "HIGH" if safety_score < 50 else "MEDIUM" if safety_score < 80 else "LOW",
+            "layout_risk": "HIGH" if compatibility_score < 50 else "MEDIUM" if compatibility_score < 80 else "LOW",
             "found_sections": found_sections
         }
 
@@ -325,8 +334,8 @@ app.add_middleware(
 )
 
 # 
-# Initialize Bot Audit AFTER class definition
-bot_audit = BotAudit(nlp)
+# Initialize Resume Auditor AFTER class definition
+auditor = ResumeAuditor(nlp)
 
 # --- API ENDPOINTS ---
 
@@ -344,19 +353,23 @@ async def root():
         }
     }
 
+# ...existing code...
 @app.post("/api/scan-resume")
 async def scan_resume(file: UploadFile = File(...)):
     try:
         content = await file.read()
         
         # Parse and audit file structure
-        audit_results = bot_audit.parse_and_audit_structure(content, file.filename)
+        audit_results = auditor.parse_and_audit_structure(content, file.filename)
         
-        # Analyze bot safety
-        bot_safety = bot_audit.check_bot_safety(audit_results["text"], audit_results)
+        # Check for critical image-only PDF
+        is_image_only = audit_results["text"].startswith("CRITICAL_ERROR_IMAGE_ONLY")
+        
+        # Analyzing ATS compatibility
+        ats_compatibility = auditor.check_ats_compatibility(audit_results["text"], audit_results)
         
         # Advanced metrics analysis
-        metrics = bot_audit.analyze_advanced_metrics(audit_results["text"])
+        metrics = auditor.analyze_advanced_metrics(audit_results["text"])
         
         return {
             "success": True,
@@ -364,7 +377,8 @@ async def scan_resume(file: UploadFile = File(...)):
             "file_type": audit_results["file_type"],
             "text_length": len(audit_results["text"]),
             "parsing_successful": audit_results["parsing_safe"],
-            "bot_safety": bot_safety,
+            "is_image_only_pdf": is_image_only,  # New flag for frontend alerts
+            "ats_compatibility": ats_compatibility,
             "metrics": metrics,
             "text_preview": audit_results["text"][:300] + "..." if len(audit_results["text"]) > 300 else audit_results["text"]
         }
@@ -373,11 +387,6 @@ async def scan_resume(file: UploadFile = File(...)):
         print(f"Scan error: {e}")
         raise HTTPException(status_code=500, detail=f"File processing error: {str(e)}")
 
-# ...existing code...
-
-# ...existing code...
-
-# ...existing code...
 
 @app.post("/api/match-job")
 async def match_job(
@@ -394,7 +403,7 @@ async def match_job(
         if resume_file and resume_file.filename:
             print("📄 Processing uploaded resume file...")
             file_content = await resume_file.read()
-            parsed_result = bot_audit.parse_and_audit_structure(file_content, resume_file.filename)
+            parsed_result = auditor.parse_and_audit_structure(file_content, resume_file.filename)
             if parsed_result["parsing_safe"]:
                 resume_text = parsed_result["text"]
                 structure_audit = parsed_result
@@ -412,7 +421,7 @@ async def match_job(
         
         print("🔤 Extracting keywords...")
         # Extract keywords with shorter limits for speed
-        job_keywords = bot_audit.extract_keywords(job_description, max_keywords=15) or []
+        job_keywords = auditor.extract_keywords(job_description, max_keywords=15) or []
         
         print(f"✅ Found {len(job_keywords)} job keywords")
         
@@ -423,16 +432,16 @@ async def match_job(
         
         keyword_score = (len(matched_keywords) / len(job_keywords) * 100) if job_keywords else 0
         
-        print("🤖 Analyzing bot safety...")
-        # Bot safety analysis
-        bot_safety = bot_audit.check_bot_safety(resume_text, structure_audit) or {}
+        print("🤖 Analyzing ATS compatibility...")
+        # ATS Readability analysis
+        ats_compatibility = auditor.check_ats_compatibility(resume_text, structure_audit) or {}
         
         print("📊 Computing advanced metrics...")
         # Advanced metrics
-        metrics = bot_audit.analyze_advanced_metrics(resume_text) or {}
+        metrics = auditor.analyze_advanced_metrics(resume_text) or {}
         
         # Calculate final ATS score
-        ats_score = min(95, max(5, int((keyword_score * 0.6) + (bot_safety.get("safety_score", 0) * 0.4))))
+        ats_score = min(95, max(5, int((keyword_score * 0.6) + (ats_compatibility.get("compatibility_score", 0) * 0.4))))
         
         # Determine overall grade
         if ats_score >= 85: 
@@ -457,10 +466,10 @@ async def match_job(
                 "missing_keywords": missing_keywords or [],
                 "total_job_keywords": len(job_keywords)
             },
-            "bot_safety": bot_safety or {},
+            "ats_compatibility": ats_compatibility or {},
             "metrics": metrics or {},
             "recommendations": {
-                "priority_fixes": bot_safety.get("critical_warnings", [])[:3],
+                "priority_fixes": ats_compatibility.get("critical_warnings", [])[:3],
                 "impact_improvements": [
                     f"Add {max(0, 5-metrics.get('metric_count', 0))} more quantified achievements" if metrics.get('metric_count', 0) < 5 else "Good use of metrics",
                     f"Replace {len(metrics.get('fluff_words', []))} buzzwords with specific examples" if metrics.get('fluff_words', []) else "Content quality is good"
@@ -482,9 +491,9 @@ async def match_job(
                 "missing_keywords": [],
                 "total_job_keywords": 0
             },
-            "bot_safety": {
-                "safety_score": 0,
-                "is_bot_readable": False,
+            "ats_compatibility": {
+                "compatibility_score": 0,
+                "is_ats_friendly": False,
                 "critical_warnings": [f"Analysis failed: {str(e)}"],
                 "layout_risk": "CRITICAL",
                 "found_sections": []
